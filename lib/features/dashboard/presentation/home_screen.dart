@@ -57,6 +57,11 @@ class HomeScreen extends ConsumerWidget {
             ),
             actions: [
                IconButton(
+                icon: const Icon(Icons.call_split), // Split Icon
+                tooltip: 'Split Bill',
+                onPressed: () => context.push('/bill-split'),
+              ),
+               IconButton(
                 icon: const Icon(Icons.handshake_outlined), // Debt Icon
                 tooltip: 'Debts',
                 onPressed: () => context.push('/debt'),

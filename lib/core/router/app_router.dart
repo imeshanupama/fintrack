@@ -24,6 +24,7 @@ import '../../features/budget/presentation/add_budget_screen.dart';
 import '../../features/reports/presentation/screens/report_screen.dart';
 import '../../features/debt/presentation/debt_screen.dart';
 import '../../features/debt/presentation/add_debt_screen.dart';
+import '../../features/bill_split/presentation/bill_split_screen.dart';
 
 import '../../features/splash/presentation/splash_screen.dart';
 import '../widgets/main_scaffold.dart';
@@ -150,6 +151,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/add-debt',
         builder: (context, state) => const AddDebtScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/bill-split',
+        builder: (context, state) => const BillSplitScreen(),
       ),
     ],
   );
