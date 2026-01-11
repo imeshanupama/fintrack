@@ -1,0 +1,13 @@
+flutter_native_splash:
+  color: "#2D1B4E" # Deep Purple to match logo background
+  image: assets/images/logo.jpg
+  branding: assets/images/logo.jpg
+  color_dark: "#2D1B4E"
+  image_dark: assets/images/logo.jpg
+  
+  android_12:
+    image: assets/images/logo.jpg
+    icon_background_color: "#2D1B4E"
+    
+  ios: true
+  android: true
