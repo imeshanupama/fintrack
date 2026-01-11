@@ -22,6 +22,8 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/budget/presentation/budget_screen.dart';
 import '../../features/budget/presentation/add_budget_screen.dart';
 import '../../features/reports/presentation/screens/report_screen.dart';
+import '../../features/debt/presentation/debt_screen.dart';
+import '../../features/debt/presentation/add_debt_screen.dart';
 
 import '../../features/splash/presentation/splash_screen.dart';
 import '../widgets/main_scaffold.dart';
@@ -138,6 +140,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/reports',
         builder: (context, state) => const ReportScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/debt',
+        builder: (context, state) => const DebtScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/add-debt',
+        builder: (context, state) => const AddDebtScreen(),
       ),
     ],
   );

@@ -56,6 +56,11 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
             actions: [
+               IconButton(
+                icon: const Icon(Icons.handshake_outlined), // Debt Icon
+                tooltip: 'Debts',
+                onPressed: () => context.push('/debt'),
+              ),
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
                 onPressed: () {

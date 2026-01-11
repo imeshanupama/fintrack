@@ -10,6 +10,8 @@ import 'features/transactions/domain/transaction_type.dart';
 import 'features/savings/domain/savings_goal.dart';
 import 'features/budget/domain/budget.dart';
 import 'features/recurring/domain/recurring_transaction.dart';
+
+import 'features/debt/domain/debt.dart'; // Import Debt entity
 import 'core/router/app_router.dart';
 import 'features/settings/presentation/settings_provider.dart'; // To listen to theme changes
 
@@ -37,14 +39,18 @@ Future<void> main() async {
     Hive.registerAdapter(TransactionTypeAdapter());
     Hive.registerAdapter(SavingsGoalAdapter());
     Hive.registerAdapter(BudgetAdapter());
+
     Hive.registerAdapter(RecurringTransactionAdapter());
+    Hive.registerAdapter(DebtAdapter()); // Register Debt Adapter
 
     // Open Boxes
     await Hive.openBox<Account>(BoxNames.accounts);
     await Hive.openBox<Transaction>(BoxNames.transactions);
     await Hive.openBox<SavingsGoal>(BoxNames.savings);
     await Hive.openBox<Budget>(BoxNames.budgetBox);
+
     await Hive.openBox<RecurringTransaction>(BoxNames.recurringBox);
+    await Hive.openBox<Debt>(BoxNames.debtsBox); // Open Debt Box
     
     // Open Settings Box
     await Hive.openBox(BoxNames.settings); // Generic box for settings
