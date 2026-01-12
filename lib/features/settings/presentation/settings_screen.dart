@@ -7,6 +7,7 @@ import '../../auth/presentation/auth_provider.dart';
 import '../application/data_export_service.dart';
 import '../../security/data/biometric_service.dart';
 import '../../../core/notifications/notification_provider.dart';
+import '../../../core/backup/backup_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -196,6 +197,43 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
                 context.push('/reports');
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.cloud_upload_outlined),
+              title: Text('Backup Data', style: GoogleFonts.outfit()),
+              subtitle: Text('Export to JSON', style: GoogleFonts.outfit(color: Colors.grey)),
+              onTap: () async {
+                await ref.read(backupServiceProvider).createBackup(context);
+              },
+            ),
+             ListTile(
+              leading: const Icon(Icons.restore_page_outlined),
+              title: Text('Restore Data', style: GoogleFonts.outfit()),
+              subtitle: Text('Import from JSON', style: GoogleFonts.outfit(color: Colors.grey)),
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Restore Backup?'),
+                    content: const Text(
+                      'WARNING: This will overwrite CURRENT data with the backup data. This action cannot be undone.',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ref.read(backupServiceProvider).restoreBackup(context);
+                        },
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        child: const Text('Restore'),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
             const Divider(),

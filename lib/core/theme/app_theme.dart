@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFF6C63FF); // Deep Purple
-  static const Color secondaryColor = Color(0xFF03DAC6); // Teal
+  static const Color primaryColor = Color(0xFF064E3B); // Dark Forest Green
+  static const Color secondaryColor = Color(0xFF10B981); // Emerald
+  static const Color tertiaryColor = Color(0xFF34D399); // Mint Accent
   static const Color errorColor = Color(0xFFCF6679);
   static const Color successColor = Color(0xFF4CAF50);
   
@@ -45,11 +46,11 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      primaryColor: primaryColor,
+      primaryColor: secondaryColor, // Use brighter emerald for dark mode primary visual
       scaffoldBackgroundColor: darkBackground,
       fontFamily: GoogleFonts.outfit().fontFamily,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
+        seedColor: secondaryColor, // Use brighter emerald for dark mode seed
         brightness: Brightness.dark,
         secondary: secondaryColor,
         surface: darkSurface,
