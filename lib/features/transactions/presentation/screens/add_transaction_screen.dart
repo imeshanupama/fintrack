@@ -14,6 +14,8 @@ import '../../domain/transaction_type.dart';
 import '../transactions_provider.dart';
 import '../../../recurring/domain/recurring_transaction.dart';
 import '../../../recurring/data/recurring_transaction_repository.dart';
+import '../../../categories/presentation/category_provider.dart';
+import '../../../categories/domain/category.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   final Transaction? transaction;
@@ -33,16 +35,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   bool _isRecurring = false;
   String _recurringInterval = 'Monthly';
 
-  final List<String> _categories = [
-    'Food',
-    'Transport',
-    'Shopping',
-    'Bills',
-    'Entertainment',
-    'Salary',
-    'Health',
-    'Others',
-  ];
+  // Removed hardcoded _categories list
+
 
   @override
   void initState() {
@@ -89,6 +83,20 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     final accounts = ref.watch(accountsProvider);
+    final allCategories = ref.watch(categoryProvider);
+    
+    // Filter categories by type (optional, or show all - commonly show based on TransactionType)
+    // For now, let's show all or filter if we want strict separation
+    // To make it simple, show all, or maybe filter?
+    // Let's filter by type (Expense/Income) to be cleaner
+    final categories = allCategories.where((c) => c.type == _type.name).toList();
+    
+    // Fallback if empty (shouldn't happen with defaults)
+    if (categories.isEmpty && allCategories.isNotEmpty) {
+       // Just show all if filtering leaves none (edge case)
+       // or maybe the user deleted all expense categories?
+    }
+
     final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
@@ -190,25 +198,35 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _categories.length,
+                        itemCount: categories.length,
                         itemBuilder: (context, index) {
-                          final cat = _categories[index];
-                          final isSelected = _categoryId == cat;
+                          final cat = categories[index];
+                          final isSelected = _categoryId == cat.name; // Storing Name as ID for now to maintain backward compatibility with string IDs
                           return GestureDetector(
-                            onTap: () => setState(() => _categoryId = cat),
+                            onTap: () => setState(() => _categoryId = cat.name),
                             child: Container(
                               margin: const EdgeInsets.only(right: 8),
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                               decoration: BoxDecoration(
-                                color: isSelected ? primaryColor : Colors.grey[200],
+                                color: isSelected ? Color(cat.colorValue) : Colors.grey[200],
                                 borderRadius: BorderRadius.circular(24),
                               ),
-                              child: Text(
-                                cat,
-                                style: GoogleFonts.outfit(
-                                  color: isSelected ? Colors.white : Colors.black,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(IconData(cat.iconCode, fontFamily: 'MaterialIcons'), 
+                                       size: 18, 
+                                       color: isSelected ? Colors.white : Colors.black
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    cat.name,
+                                    style: GoogleFonts.outfit(
+                                      color: isSelected ? Colors.white : Colors.black,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );

@@ -5,5 +5,6 @@ class BoxNames {
   static const String budgetBox = 'budgetBox';
   static const String recurringBox = 'recurringBox';
   static const String debtsBox = 'debtsBox';
+  static const String categoriesBox = 'categoriesBox';
   static const String settings = 'settingsBox';
 }
