@@ -26,15 +26,12 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
 class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   String _amount = '0';
   TransactionType _type = TransactionType.expense;
-  String _categoryId = 'Food';
+  String? _categoryId;
   String? _accountId;
   final TextEditingController _noteController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   bool _isRecurring = false;
   String _recurringInterval = 'Monthly';
-
-  // Removed hardcoded _categories list
-
 
   @override
   void initState() {
@@ -83,17 +80,27 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final accounts = ref.watch(accountsProvider);
     final allCategories = ref.watch(categoryProvider);
     
-    // Filter categories by type (optional, or show all - commonly show based on TransactionType)
-    // For now, let's show all or filter if we want strict separation
-    // To make it simple, show all, or maybe filter?
-    // Let's filter by type (Expense/Income) to be cleaner
+    // Filter categories by type
     final categories = allCategories.where((c) => c.type == _type.name).toList();
     
-    // Fallback if empty (shouldn't happen with defaults)
-    if (categories.isEmpty && allCategories.isNotEmpty) {
-       // Just show all if filtering leaves none (edge case)
-       // or maybe the user deleted all expense categories?
+    // Ensure _categoryId is valid for the current filtered list
+    // If _categoryId is null or not in the current list, default to the first one
+    if (categories.isNotEmpty) {
+      final isValid = categories.any((c) => c.id == _categoryId);
+      if (!isValid || _categoryId == null) {
+        // We need to defer this set state or just handle it in the UI logic
+        // Ideally, we select the first one.
+        // NOTE: We cannot call setState here safely during build if it triggers a rebuild loop, 
+        // effectively we just use the first ID for display/logic if _categoryId is invalid.
+        // But for saving, we need to ensure we hold a valid ID.
+        // Let's perform a post-frame callback callback ONLY if we need to sync state? 
+        // Or simpler: just use a local variable for 'activeCategoryId'
+        if (_categoryId == null || !isValid) {
+           _categoryId = categories.first.id;
+        }
+      }
     }
+
 
     return Scaffold(
       appBar: AppBar(
@@ -114,6 +121,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 _type = _type == TransactionType.expense
                     ? TransactionType.income
                     : TransactionType.expense;
+                // clear category so it picks one from the new type
+                _categoryId = null;
               });
             },
             child: Text(
@@ -191,15 +200,17 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     // Category Selector (Simple horizontal list)
                     SizedBox(
                       height: 50,
-                      child: ListView.builder(
+                      child: categories.isEmpty 
+                        ? Center(child: Text('No categories found', style: GoogleFonts.outfit()))
+                        : ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: categories.length,
                         itemBuilder: (context, index) {
                           final cat = categories[index];
-                          final isSelected = _categoryId == cat.name; // Storing Name as ID for now to maintain backward compatibility with string IDs
+                          final isSelected = _categoryId == cat.id; 
                           return GestureDetector(
-                            onTap: () => setState(() => _categoryId = cat.name),
+                            onTap: () => setState(() => _categoryId = cat.id),
                             child: Container(
                               margin: const EdgeInsets.only(right: 8),
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -279,7 +290,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         width: double.infinity,
                         height: 56,
                         child: FilledButton(
-                          onPressed: _amount == '0' || _accountId == null ? null : _saveTransaction,
+                          onPressed: _amount == '0' || _accountId == null || _categoryId == null ? null : _saveTransaction,
                           child: Text('Save', style: GoogleFonts.outfit(fontSize: 18)),
                         ),
                       ),
@@ -379,7 +390,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Future<void> _saveTransaction() async {
     final amount = double.tryParse(_amount);
     if (amount == null || amount == 0) return;
-    if (_accountId == null) return;
+    if (_accountId == null || _categoryId == null) return;
 
     final accounts = ref.read(accountsProvider); // Current state
     final selectedAccount = accounts.firstWhere((a) => a.id == _accountId);
@@ -405,14 +416,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             // Save Old Account immediately
             await ref.read(accountsProvider.notifier).updateAccount(oldAccount.copyWith(balance: oldAccBalance));
         }
-
-        // 2. Prepare New Account (selectedAccount)
-        // We will apply the new transaction to 'selectedAccount' below.
-        // But first, we need to ensure we have the LATEST version of selectedAccount 
-        // in case the update above somehow affected it (unlikely but safe).
-        // Since we are about to modify 'selectedAccount', let's use the one we have, 
-        // as we haven't touched it yet in this branch.
-
       } else {
         // CASE B: Same Account
         // We need to revert the old transaction's effect on 'selectedAccount' first.
@@ -424,16 +427,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         }
         // We DO NOT save yet. We will apply the new transaction to this 'revertedBalance'.
         // Update our local 'selectedAccount' variable to reflect this intermediate state.
-        // specific: force update the variable so the next block uses the reverted balance.
-        // We use a temp variable for the logic below.
         final intermediateAccount = selectedAccount.copyWith(balance: revertedBalance);
-        
-        // This is the tricky part: we want to apply the NEW transaction to this intermediate account.
-        // We can just proceed to the "Apply New Transaction" block, but we must ensure
-        // it uses 'intermediateAccount' as the base.
-        
-        // Let's refactor:
-        // We will calculate 'finalBalance' here and save ONCE.
         
         double finalBalance = revertedBalance;
         if (_type == TransactionType.income) {
@@ -450,7 +444,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           id: widget.transaction!.id,
           amount: amount,
           currencyCode: finalAccount.currencyCode,
-          categoryId: _categoryId,
+          categoryId: _categoryId!,
           accountId: _accountId!,
           date: _selectedDate,
           note: _noteController.text,
@@ -458,7 +452,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         );
         await ref.read(transactionsProvider.notifier).updateTransaction(transaction);
         
-        // Handle Recurring Update? (Optional complexity, skipping for now as per original)
         if (mounted) context.pop();
         return; // EXIT EARLY for Same Account Edit
       }
@@ -466,12 +459,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     // -- Step 2: Create/Update Transaction Record (New or Changed Account) --
     // If we are here, it's either a NEW transaction OR an edit where Account CHANGED.
-    // In both cases, 'selectedAccount' (as fetched initially) is the target for the NEW amount.
-    // (If account changed, we already reverted old account above).
-
-    // Refetch account to be absolutely safe?
-    // Not strictly necessary if we are confident, but let's just use the clean 'selectedAccount'
-    // since we haven't modified it yet in this flow (only oldAccount was modified).
     
     double newBalance = selectedAccount.balance;
     if (_type == TransactionType.income) {
@@ -487,7 +474,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       id: widget.transaction?.id ?? const Uuid().v4(),
       amount: amount,
       currencyCode: finalAccount.currencyCode,
-      categoryId: _categoryId,
+      categoryId: _categoryId!,
       accountId: _accountId!, // The NEW account ID
       date: _selectedDate,
       note: _noteController.text,
@@ -522,10 +509,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
 
       final recurring = RecurringTransaction(
-        id: const Uuid().v4(), // Always new ID for recurring rule? Or link it? keeping simple
+        id: const Uuid().v4(),
         amount: amount,
         currencyCode: finalAccount.currencyCode,
-        categoryId: _categoryId,
+        categoryId: _categoryId!,
         accountId: _accountId!,
         note: _noteController.text,
         type: _type,

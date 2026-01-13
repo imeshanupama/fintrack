@@ -20,6 +20,7 @@ import 'features/settings/presentation/settings_provider.dart'; // To listen to 
 import 'features/security/data/biometric_service.dart';
 import 'core/sync/sync_manager.dart';
 import 'core/notifications/notification_service.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   try {
@@ -30,7 +31,9 @@ Future<void> main() async {
 
     // Initialize Firebase
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     } catch (e) {
       debugPrint("Firebase initialization failed: $e");
     }
