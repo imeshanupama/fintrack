@@ -5,17 +5,15 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../scanner/data/ocr_service.dart';
+import '../../../scanner/presentation/scan_receipt_screen.dart';
 import '../../../accounts/presentation/accounts_provider.dart';
-import '../../../accounts/domain/account.dart';
 import '../../domain/transaction.dart';
 import '../../domain/transaction_type.dart';
 import '../transactions_provider.dart';
 import '../../../recurring/domain/recurring_transaction.dart';
 import '../../../recurring/data/recurring_transaction_repository.dart';
 import '../../../categories/presentation/category_provider.dart';
-import '../../../categories/domain/category.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   final Transaction? transaction;
@@ -96,8 +94,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
        // Just show all if filtering leaves none (edge case)
        // or maybe the user deleted all expense categories?
     }
-
-    final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
       appBar: AppBar(
@@ -544,47 +540,30 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Future<void> _scanReceipt() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context, 
-      builder: (ctx) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Camera'), onTap: () => Navigator.pop(ctx, ImageSource.camera)),
-          ListTile(leading: const Icon(Icons.image), title: const Text('Gallery'), onTap: () => Navigator.pop(ctx, ImageSource.gallery)),
-        ],
-      )
+    final result = await Navigator.push<ReceiptData>(
+      context,
+      MaterialPageRoute(builder: (context) => const ScanReceiptScreen()),
     );
-    if (source == null) return;
 
-    final ocr = ref.read(ocrServiceProvider);
-    final path = await ocr.pickImage(source);
-    if (path == null) return;
-
-    if (mounted) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scanning receipt...')));
-    }
-
-    try {
-      final data = await ocr.scanReceipt(path);
-      setState(() {
-         if (data.amount != null) {
-            // Check if int or decimal
-            if (data.amount! % 1 == 0) {
-               _amount = data.amount!.toInt().toString(); 
-            } else {
-               _amount = data.amount!.toStringAsFixed(2);
-            }
-         }
-         if (data.date != null) _selectedDate = data.date!;
-         if (_noteController.text.isEmpty) _noteController.text = "Scanned Receipt";
-      });
+    if (result != null) {
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Receipt scanned!')));
+        setState(() {
+          if (result.amount != null) {
+            if (result.amount! % 1 == 0) {
+              _amount = result.amount!.toInt().toString();
+            } else {
+              _amount = result.amount!.toStringAsFixed(2);
+            }
+          }
+          if (result.date != null) {
+            _selectedDate = result.date!;
+          }
+          if (_noteController.text.isEmpty && result.text.isNotEmpty) {
+             _noteController.text = result.text; // Text from scanner is Merchant/Note
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Receipt details applied!')));
       }
-    } catch (e) {
-       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed: $e')));
-       }
     }
   }
 
