@@ -9,6 +9,8 @@ import '../../transactions/presentation/transactions_provider.dart';
 import '../../transactions/domain/transaction.dart';
 import '../../transactions/domain/transaction_type.dart';
 import '../../accounts/presentation/accounts_provider.dart';
+import '../../categories/presentation/category_provider.dart'; // Import CategoryProvider
+import '../../categories/domain/category.dart';
 
 class BillSplitScreen extends ConsumerStatefulWidget {
   const BillSplitScreen({super.key});
@@ -25,6 +27,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
   bool _includeMe = true;
   bool _addToExpenses = false;
   String? _selectedAccountId;
+  String? _selectedCategoryId; // Added category selection
   
   @override
   void dispose() {
@@ -61,6 +64,11 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
       return;
     }
 
+    if (_includeMe && _addToExpenses && _selectedCategoryId == null) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a category for your share')));
+       return;
+    }
+
     // Calculate Split
     final divisor = _people.length + (_includeMe ? 1 : 0);
     final amountPerPerson = totalAmount / divisor;
@@ -79,7 +87,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
     }
     
     // 2. Add to Expenses (My Share)
-    if (_includeMe && _addToExpenses && _selectedAccountId != null) {
+    if (_includeMe && _addToExpenses && _selectedAccountId != null && _selectedCategoryId != null) {
       final myShare = double.parse(amountPerPerson.toStringAsFixed(2));
       
       final accounts = ref.read(accountsProvider);
@@ -94,7 +102,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
         id: const Uuid().v4(),
         amount: myShare,
         currencyCode: account.currencyCode,
-        categoryId: 'Food', // Defaulting to Food for now, could be selectable
+        categoryId: _selectedCategoryId!, // Use selected category UUID
         accountId: account.id,
         date: DateTime.now(),
         note: 'My share of bill split',
@@ -112,6 +120,9 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
   @override
   Widget build(BuildContext context) {
     final accounts = ref.watch(accountsProvider);
+    final allCategories = ref.watch(categoryProvider);
+    // Filter only expense categories
+    final expenseCategories = allCategories.where((c) => c.type == TransactionType.expense.name).toList();
     
     // Calculate preview
     final totalAmount = double.tryParse(_amountController.text) ?? 0.0;
@@ -189,14 +200,42 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
               ),
               
             if (_includeMe && _addToExpenses && accounts.isNotEmpty)
-               Padding(
-                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                 child: DropdownButtonFormField<String>(
-                   value: _selectedAccountId ?? accounts.first.id,
-                   decoration: const InputDecoration(labelText: 'Pay from Account'),
-                   items: accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
-                   onChanged: (val) => setState(() => _selectedAccountId = val),
-                 ),
+               Column(
+                 children: [
+                   Padding(
+                     padding: const EdgeInsets.symmetric(horizontal: 16),
+                     child: DropdownButtonFormField<String>(
+                       value: _selectedAccountId ?? accounts.first.id,
+                       decoration: const InputDecoration(labelText: 'Pay from Account'),
+                       items: accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
+                       onChanged: (val) => setState(() => _selectedAccountId = val),
+                     ),
+                   ),
+                   const SizedBox(height: 16),
+                   if (expenseCategories.isNotEmpty)
+                     Padding(
+                       padding: const EdgeInsets.symmetric(horizontal: 16),
+                       child: DropdownButtonFormField<String>(
+                         value: _selectedCategoryId, // Initially null
+                         hint: const Text('Select Category'),
+                         decoration: const InputDecoration(
+                           labelText: 'My Share Category',
+                           prefixIcon: Icon(Icons.category),
+                         ),
+                         items: expenseCategories.map((c) => DropdownMenuItem(
+                           value: c.id, 
+                           child: Row(
+                             children: [
+                               Text(c.iconCode, style: const TextStyle(fontSize: 16)), // Simple char icon
+                               const SizedBox(width: 8),
+                               Text(c.name),
+                             ],
+                           ),
+                         )).toList(),
+                         onChanged: (val) => setState(() => _selectedCategoryId = val),
+                       ),
+                     ),
+                 ],
                ),
                
             const SizedBox(height: 32),
