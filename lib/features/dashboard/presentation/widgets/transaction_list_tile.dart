@@ -8,6 +8,8 @@ import '../../../transactions/domain/transaction_type.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../settings/presentation/settings_provider.dart';
 
+import '../../../categories/presentation/category_provider.dart';
+
 class TransactionListTile extends ConsumerWidget {
   final Transaction transaction;
 
@@ -16,6 +18,14 @@ class TransactionListTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currency = ref.watch(settingsProvider).currency;
+    final categories = ref.watch(categoryProvider);
+    
+    // Lookup Category
+    final category = categories.firstWhere(
+      (c) => c.id == transaction.categoryId,
+      orElse: () => categories.firstWhere((c) => c.name == 'Others', orElse: () => categories.first), // Fallback
+    );
+
     final isIncome = transaction.type == TransactionType.income;
     final color = isIncome ? Colors.green : Colors.red;
     final prefix = isIncome ? '+' : '-';
@@ -26,16 +36,16 @@ class TransactionListTile extends ConsumerWidget {
       leading: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: Color(category.colorValue).withOpacity(0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(
-          isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-          color: color,
+          category.icon,
+          color: Color(category.colorValue),
         ),
       ),
       title: Text(
-        transaction.categoryId, // TODO: Replace with Category Name lookup
+        category.name,
         style: GoogleFonts.outfit(
           fontWeight: FontWeight.w600,
           fontSize: 16,

@@ -56,4 +56,13 @@ class SettingsRepository {
   Future<void> setDailyReminderTime(String time) async {
     await _box.put('daily_reminder_time', time);
   }
+
+  // Onboarding
+  bool getHasCompletedOnboarding() {
+    return _box.get('has_completed_onboarding', defaultValue: false);
+  }
+
+  Future<void> setHasCompletedOnboarding(bool completed) async {
+    await _box.put('has_completed_onboarding', completed);
+  }
 }

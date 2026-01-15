@@ -26,6 +26,8 @@ import '../../features/debt/presentation/debt_screen.dart';
 import '../../features/debt/presentation/add_debt_screen.dart';
 import '../../features/bill_split/presentation/bill_split_screen.dart';
 import '../../features/categories/presentation/manage_categories_screen.dart';
+import '../../features/settings/data/settings_repository.dart'; // Import SettingsRepository
+import '../../features/onboarding/presentation/onboarding_screen.dart'; // Import OnboardingScreen
 
 import '../../features/splash/presentation/splash_screen.dart';
 import '../widgets/main_scaffold.dart';
@@ -36,6 +38,7 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
   final authRepo = ref.watch(authRepositoryProvider);
+  final settingsRepo = ref.read(settingsRepositoryProvider); // Read Settings Repo
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -46,6 +49,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = state.uri.toString() == '/login';
       final isSigningUp = state.uri.toString() == '/signup';
       final isSplash = state.uri.toString() == '/splash';
+      final isOnboarding = state.uri.toString() == '/onboarding';
 
       // Always allow splash
       if (isSplash) return null;
@@ -54,8 +58,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
 
-      if (isAuthenticated && (isLoggingIn || isSigningUp)) {
-        return '/';
+      if (isAuthenticated) {
+        if (isLoggingIn || isSigningUp) {
+          return '/';
+        }
+
+        // Onboarding Check
+        final hasCompletedOnboarding = settingsRepo.getHasCompletedOnboarding();
+        if (!hasCompletedOnboarding && !isOnboarding) {
+          return '/onboarding';
+        }
+        if (hasCompletedOnboarding && isOnboarding) {
+          return '/';
+        }
       }
 
       return null;
@@ -162,6 +177,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/bill-split',
         builder: (context, state) => const BillSplitScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
       ),
     ],
   );

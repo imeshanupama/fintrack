@@ -226,7 +226,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
                            value: c.id, 
                            child: Row(
                              children: [
-                               Text(c.iconCode, style: const TextStyle(fontSize: 16)), // Simple char icon
+                               Icon(c.icon, size: 20), // Use Icon widget
                                const SizedBox(width: 8),
                                Text(c.name),
                              ],
