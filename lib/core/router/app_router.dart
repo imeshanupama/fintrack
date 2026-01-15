@@ -28,6 +28,9 @@ import '../../features/bill_split/presentation/bill_split_screen.dart';
 import '../../features/categories/presentation/manage_categories_screen.dart';
 import '../../features/settings/data/settings_repository.dart'; // Import SettingsRepository
 import '../../features/onboarding/presentation/onboarding_screen.dart'; // Import OnboardingScreen
+import '../../features/recurring/presentation/recurring_transactions_screen.dart';
+import '../../features/recurring/presentation/add_recurring_transaction_screen.dart';
+import '../../features/recurring/domain/recurring_transaction.dart';
 
 import '../../features/splash/presentation/splash_screen.dart';
 import '../widgets/main_scaffold.dart';
@@ -182,6 +185,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/recurring',
+        builder: (context, state) => const RecurringTransactionsScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/add-recurring',
+        builder: (context, state) {
+           final recurring = state.extra as RecurringTransaction?;
+           return AddRecurringTransactionScreen(recurringTransaction: recurring);
+        },
       ),
     ],
   );
