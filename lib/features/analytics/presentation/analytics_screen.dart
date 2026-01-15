@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../categories/presentation/category_provider.dart';
 import 'analytics_provider.dart';
 import 'widgets/spending_bar_chart.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -181,13 +182,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     sectionsSpace: 2,
                     centerSpaceRadius: 40,
                     sections: breakdownData.entries.map((e) {
-                      final index = breakdownData.keys.toList().indexOf(e.key);
-                      final color = currentPieColors[index % currentPieColors.length];
-                      
+                      // Lookup Category
+                      final allCategories = ref.watch(categoryProvider);
+                      final category = allCategories.firstWhere(
+                        (c) => c.id == e.key, 
+                        orElse: () => allCategories.firstWhere((c) => c.name == 'Others', orElse: () => allCategories.first),
+                      );
+
                       return PieChartSectionData(
-                        color: color,
+                        color: Color(category.colorValue),
                         value: e.value,
-                        title: '${e.key}\n\$${e.value.toStringAsFixed(0)}',
+                        title: '${category.name}\n\$${e.value.toStringAsFixed(0)}',
                         radius: 50,
                         titleStyle: GoogleFonts.outfit(
                           fontSize: 12,
