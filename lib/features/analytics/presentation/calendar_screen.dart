@@ -70,7 +70,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 shape: BoxShape.circle,
               ),
               todayDecoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.5),
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
               markerDecoration: const BoxDecoration(
@@ -119,7 +119,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       final isExpense = tx.type == TransactionType.expense;
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: isExpense ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                          backgroundColor: isExpense ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
                           child: Icon(
                              // Use a default icon since we don't have easy category lookup here unless we fetch categories
                              // Assuming categoryId is readable or we just show generic
@@ -150,7 +150,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

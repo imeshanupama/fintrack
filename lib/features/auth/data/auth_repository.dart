@@ -24,18 +24,18 @@ class AuthRepository {
 
   Future<UserCredential> signIn(String email, String password) async {
     if (_auth == null) throw Exception("Firebase not initialized. Add config files.");
-    return await _auth!.signInWithEmailAndPassword(email: email, password: password);
+    return await _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
   Future<UserCredential> signUp(String email, String password) async {
     if (_auth == null) throw Exception("Firebase not initialized. Add config files.");
-    return await _auth!.createUserWithEmailAndPassword(email: email, password: password);
+    return await _auth.createUserWithEmailAndPassword(email: email, password: password);
   }
 
   Future<void> signOut() async {
     if (_auth == null) throw Exception("Firebase not initialized. Add config files.");
     await _googleSignIn.signOut(); // Ensure Google also signs out
-    await _auth!.signOut();
+    await _auth.signOut();
   }
 
   // Google Sign-In
@@ -53,20 +53,20 @@ class AuthRepository {
         idToken: googleAuth.idToken,
       );
 
-      return await _auth!.signInWithCredential(credential);
+      return await _auth.signInWithCredential(credential);
     } catch (e) {
       rethrow;
     }
   }
 
   Future<void> updateDisplayName(String name) async {
-    if (_auth == null || _auth!.currentUser == null) return;
-    await _auth!.currentUser!.updateDisplayName(name);
-    await _auth!.currentUser!.reload();
+    if (_auth == null || _auth.currentUser == null) return;
+    await _auth.currentUser!.updateDisplayName(name);
+    await _auth.currentUser!.reload();
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
     if (_auth == null) throw Exception("Firebase not initialized.");
-    await _auth!.sendPasswordResetEmail(email: email);
+    await _auth.sendPasswordResetEmail(email: email);
   }
 }
