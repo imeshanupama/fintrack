@@ -8,4 +8,5 @@ class BoxNames {
   static const String categoriesBox = 'categoriesBox';
   static const String settings = 'settingsBox';
   static const String billSplitsBox = 'billSplitsBox';
+  static const String insightsBox = 'insightsBox';
 }

@@ -28,6 +28,9 @@ import '../../features/bill_split/presentation/bill_split_screen.dart';
 import '../../features/bill_split/presentation/bill_splits_list_screen.dart';
 import '../../features/bill_split/presentation/bill_split_detail_screen.dart';
 import '../../features/bill_split/domain/bill_split.dart';
+import '../../features/insights/presentation/insights_screen.dart';
+import '../../features/insights/presentation/insight_detail_screen.dart';
+import '../../features/insights/domain/insight.dart';
 import '../../features/categories/presentation/manage_categories_screen.dart';
 import '../../features/settings/data/settings_repository.dart'; // Import SettingsRepository
 import '../../features/onboarding/presentation/onboarding_screen.dart'; // Import OnboardingScreen
@@ -195,6 +198,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final billSplit = state.extra as BillSplit;
           return BillSplitDetailScreen(billSplit: billSplit);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/insights',
+        builder: (context, state) => const InsightsScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/insight-detail',
+        builder: (context, state) {
+          final insight = state.extra as Insight;
+          return InsightDetailScreen(insight: insight);
         },
       ),
       GoRoute(
