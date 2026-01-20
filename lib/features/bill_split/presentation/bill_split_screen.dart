@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
-import 'package:google_fonts/google_fonts.dart'; 
+import 'package:google_fonts/google_fonts.dart';
+import '../domain/bill_split.dart';
+import '../domain/split_participant.dart';
+import 'bill_split_provider.dart';
+import 'widgets/split_method_selector.dart';
 import '../../debt/presentation/debt_provider.dart';
 import '../../debt/domain/debt.dart';
 import '../../transactions/presentation/transactions_provider.dart';
 import '../../transactions/domain/transaction.dart';
 import '../../transactions/domain/transaction_type.dart';
 import '../../accounts/presentation/accounts_provider.dart';
-import '../../categories/presentation/category_provider.dart'; // Import CategoryProvider
-import '../../categories/domain/category.dart';
+import '../../categories/presentation/category_provider.dart';
 
 class BillSplitScreen extends ConsumerStatefulWidget {
   const BillSplitScreen({super.key});
@@ -20,100 +23,185 @@ class BillSplitScreen extends ConsumerStatefulWidget {
 }
 
 class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
+  final _titleController = TextEditingController();
   final _amountController = TextEditingController();
+  final _noteController = TextEditingController();
   final _personController = TextEditingController();
-  
-  final List<String> _people = [];
+  final _customAmountController = TextEditingController();
+
+  SplitMethod _splitMethod = SplitMethod.equal;
+  final List<Map<String, dynamic>> _participants = [];
   bool _includeMe = true;
   bool _addToExpenses = false;
+  bool _createDebtRecords = true;
   String? _selectedAccountId;
-  String? _selectedCategoryId; // Added category selection
-  
+  String? _selectedCategoryId;
+
   @override
   void dispose() {
+    _titleController.dispose();
     _amountController.dispose();
+    _noteController.dispose();
     _personController.dispose();
+    _customAmountController.dispose();
     super.dispose();
   }
 
-  void _addPerson() {
+  void _addParticipant() {
     final name = _personController.text.trim();
-    if (name.isNotEmpty) {
-      setState(() {
-        _people.add(name);
-        _personController.clear();
-      });
-    }
-  }
+    if (name.isEmpty) return;
 
-  void _removePerson(int index) {
+    final amount = _splitMethod == SplitMethod.custom
+        ? double.tryParse(_customAmountController.text) ?? 0.0
+        : 0.0;
+
     setState(() {
-      _people.removeAt(index);
+      _participants.add({'name': name, 'amount': amount});
+      _personController.clear();
+      _customAmountController.clear();
     });
   }
 
-  Future<void> _saveSplits() async {
+  void _removeParticipant(int index) {
+    setState(() {
+      _participants.removeAt(index);
+    });
+  }
+
+  Map<String, double> _calculateSplits() {
     final totalAmount = double.tryParse(_amountController.text) ?? 0.0;
-    if (totalAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid amount')));
+    final splits = <String, double>{};
+
+    if (_splitMethod == SplitMethod.equal) {
+      final divisor = _participants.length + (_includeMe ? 1 : 0);
+      if (divisor > 0) {
+        final amountPerPerson = totalAmount / divisor;
+        for (var p in _participants) {
+          splits[p['name']] = amountPerPerson;
+        }
+        if (_includeMe) {
+          splits['Me'] = amountPerPerson;
+        }
+      }
+    } else if (_splitMethod == SplitMethod.custom) {
+      for (var p in _participants) {
+        splits[p['name']] = p['amount'] ?? 0.0;
+      }
+      if (_includeMe) {
+        final othersTotal = splits.values.fold(0.0, (sum, amount) => sum + amount);
+        splits['Me'] = totalAmount - othersTotal;
+      }
+    }
+
+    return splits;
+  }
+
+  Future<void> _saveSplit() async {
+    // Validation
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a title')),
+      );
       return;
     }
-    
-    if (_people.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add at least one person')));
+
+    final totalAmount = double.tryParse(_amountController.text) ?? 0.0;
+    if (totalAmount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid amount')),
+      );
+      return;
+    }
+
+    if (_participants.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one participant')),
+      );
       return;
     }
 
     if (_includeMe && _addToExpenses && _selectedCategoryId == null) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a category for your share')));
-       return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a category for your share')),
+      );
+      return;
     }
 
-    // Calculate Split
-    final divisor = _people.length + (_includeMe ? 1 : 0);
-    final amountPerPerson = totalAmount / divisor;
-    
-    // 1. Create Debt Records
-    for (final person in _people) {
-      final debt = Debt(
-        id: const Uuid().v4(),
-        personName: person,
-        amount: double.parse(amountPerPerson.toStringAsFixed(2)),
-        date: DateTime.now(),
-        isLent: true, // I paid, so I lent them money
-        description: 'Bill Split Share',
-      );
-      await ref.read(debtProvider.notifier).addDebt(debt);
+    final splits = _calculateSplits();
+    final accounts = ref.read(accountsProvider);
+    final account = accounts.isNotEmpty
+        ? accounts.firstWhere((a) => a.id == _selectedAccountId, orElse: () => accounts.first)
+        : null;
+
+    String? transactionId;
+    double? myShare;
+
+    // Create transaction for my share if needed
+    if (_includeMe && _addToExpenses && account != null && _selectedCategoryId != null) {
+      myShare = splits['Me'];
+      if (myShare != null && myShare > 0) {
+        // Update account balance
+        final updatedAccount = account.copyWith(balance: account.balance - myShare);
+        await ref.read(accountsProvider.notifier).updateAccount(updatedAccount);
+
+        // Create transaction
+        transactionId = const Uuid().v4();
+        final transaction = Transaction(
+          id: transactionId,
+          amount: myShare,
+          currencyCode: account.currencyCode,
+          categoryId: _selectedCategoryId!,
+          accountId: account.id,
+          date: DateTime.now(),
+          note: 'My share: ${_titleController.text}',
+          type: TransactionType.expense,
+        );
+        await ref.read(transactionsProvider.notifier).addTransaction(transaction);
+      }
     }
-    
-    // 2. Add to Expenses (My Share)
-    if (_includeMe && _addToExpenses && _selectedAccountId != null && _selectedCategoryId != null) {
-      final myShare = double.parse(amountPerPerson.toStringAsFixed(2));
-      
-      final accounts = ref.read(accountsProvider);
-      final account = accounts.firstWhere((a) => a.id == _selectedAccountId, orElse: () => accounts.first);
-      
-      // Update Balance
-      final updatedAccount = account.copyWith(balance: account.balance - myShare);
-      await ref.read(accountsProvider.notifier).updateAccount(updatedAccount);
-      
-      // Create Transaction
-      final transaction = Transaction(
-        id: const Uuid().v4(),
-        amount: myShare,
-        currencyCode: account.currencyCode,
-        categoryId: _selectedCategoryId!, // Use selected category UUID
-        accountId: account.id,
-        date: DateTime.now(),
-        note: 'My share of bill split',
-        type: TransactionType.expense,
+
+    // Create BillSplit record
+    final participants = _participants.map((p) {
+      return SplitParticipant(
+        name: p['name'],
+        amount: splits[p['name']] ?? 0.0,
       );
-      await ref.read(transactionsProvider.notifier).addTransaction(transaction);
+    }).toList();
+
+    final billSplit = BillSplit(
+      id: const Uuid().v4(),
+      title: _titleController.text.trim(),
+      totalAmount: totalAmount,
+      currencyCode: account?.currencyCode ?? 'USD',
+      date: DateTime.now(),
+      participants: participants,
+      myShare: myShare,
+      transactionId: transactionId,
+      note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+    );
+
+    await ref.read(billSplitNotifierProvider).addBillSplit(billSplit);
+
+    // Optionally create debt records
+    if (_createDebtRecords) {
+      for (var p in participants) {
+        final debt = Debt(
+          id: const Uuid().v4(),
+          personName: p.name,
+          amount: p.amount,
+          date: DateTime.now(),
+          isLent: true,
+          description: 'Bill Split: ${_titleController.text}',
+        );
+        await ref.read(debtProvider.notifier).addDebt(debt);
+      }
     }
 
     if (mounted) {
       context.pop();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Splits saved successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bill split created successfully!')),
+      );
     }
   }
 
@@ -121,13 +209,8 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
   Widget build(BuildContext context) {
     final accounts = ref.watch(accountsProvider);
     final allCategories = ref.watch(categoryProvider);
-    // Filter only expense categories
     final expenseCategories = allCategories.where((c) => c.type == TransactionType.expense.name).toList();
-    
-    // Calculate preview
-    final totalAmount = double.tryParse(_amountController.text) ?? 0.0;
-    final divisor = _people.length + (_includeMe ? 1 : 0);
-    final splitAmount = divisor > 0 ? totalAmount / divisor : 0.0;
+    final splits = _calculateSplits();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Split Bill')),
@@ -136,54 +219,120 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Title Input
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Bill Title',
+                hintText: 'e.g., Dinner at Restaurant',
+                prefixIcon: Icon(Icons.title),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Amount Input
             TextField(
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
-                labelText: 'Total Bill Amount',
+                labelText: 'Total Amount',
                 prefixIcon: Icon(Icons.attach_money),
                 border: OutlineInputBorder(),
               ),
               onChanged: (_) => setState(() {}),
             ),
+            const SizedBox(height: 16),
+
+            // Note Input
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(
+                labelText: 'Note (Optional)',
+                prefixIcon: Icon(Icons.note),
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
             const SizedBox(height: 24),
-            
-            // People Input
+
+            // Split Method Selector
+            Text('Split Method', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            SplitMethodSelector(
+              selectedMethod: _splitMethod,
+              onMethodChanged: (method) => setState(() => _splitMethod = method),
+            ),
+            const SizedBox(height: 24),
+
+            // Participants Input
+            Text('Participants', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
+                  flex: 2,
                   child: TextField(
                     controller: _personController,
                     decoration: const InputDecoration(
-                      labelText: 'Add Person Name',
+                      labelText: 'Name',
                       prefixIcon: Icon(Icons.person_add),
+                      border: OutlineInputBorder(),
                     ),
-                    onSubmitted: (_) => _addPerson(),
+                    onSubmitted: (_) => _splitMethod == SplitMethod.custom ? null : _addParticipant(),
                   ),
                 ),
+                if (_splitMethod == SplitMethod.custom) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _customAmountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Amount',
+                        prefixIcon: Icon(Icons.attach_money),
+                        border: OutlineInputBorder(),
+                      ),
+                      onSubmitted: (_) => _addParticipant(),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
                 IconButton(
-                  onPressed: _addPerson,
-                  icon: const Icon(Icons.add_circle, size: 32, color: Colors.blue),
+                  onPressed: _addParticipant,
+                  icon: const Icon(Icons.add_circle, size: 32),
+                  color: Theme.of(context).primaryColor,
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            
-            // People List
-            Wrap(
-              spacing: 8,
-              children: _people.asMap().entries.map((entry) {
-                return Chip(
-                  label: Text(entry.value),
-                  onDeleted: () => _removePerson(entry.key),
-                  deleteIcon: const Icon(Icons.close, size: 18),
+
+            // Participants List
+            if (_participants.isNotEmpty) ...[
+              ...List.generate(_participants.length, (index) {
+                final participant = _participants[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: CircleAvatar(child: Text(participant['name'][0].toUpperCase())),
+                    title: Text(participant['name'], style: GoogleFonts.outfit()),
+                    subtitle: splits.containsKey(participant['name'])
+                        ? Text('\$${splits[participant['name']]!.toStringAsFixed(2)}',
+                            style: GoogleFonts.outfit(color: Colors.grey))
+                        : null,
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () => _removeParticipant(index),
+                    ),
+                  ),
                 );
-              }).toList(),
-            ),
-            
-            const Divider(height: 32),
-            
+              }),
+              const SizedBox(height: 16),
+            ],
+
+            const Divider(),
+            const SizedBox(height: 16),
+
             // Options
             SwitchListTile(
               title: const Text('Include Me'),
@@ -191,79 +340,92 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
               value: _includeMe,
               onChanged: (val) => setState(() => _includeMe = val),
             ),
-            
+
             if (_includeMe)
               SwitchListTile(
                 title: const Text('Add My Share to Expenses'),
                 value: _addToExpenses,
                 onChanged: (val) => setState(() => _addToExpenses = val),
               ),
-              
-            if (_includeMe && _addToExpenses && accounts.isNotEmpty)
-               Column(
-                 children: [
-                   Padding(
-                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                     child: DropdownButtonFormField<String>(
-                       value: _selectedAccountId ?? accounts.first.id,
-                       decoration: const InputDecoration(labelText: 'Pay from Account'),
-                       items: accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
-                       onChanged: (val) => setState(() => _selectedAccountId = val),
-                     ),
-                   ),
-                   const SizedBox(height: 16),
-                   if (expenseCategories.isNotEmpty)
-                     Padding(
-                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                       child: DropdownButtonFormField<String>(
-                         value: _selectedCategoryId, // Initially null
-                         hint: const Text('Select Category'),
-                         decoration: const InputDecoration(
-                           labelText: 'My Share Category',
-                           prefixIcon: Icon(Icons.category),
-                         ),
-                         items: expenseCategories.map((c) => DropdownMenuItem(
-                           value: c.id, 
-                           child: Row(
-                             children: [
-                               Icon(c.icon, size: 20), // Use Icon widget
-                               const SizedBox(width: 8),
-                               Text(c.name),
-                             ],
-                           ),
-                         )).toList(),
-                         onChanged: (val) => setState(() => _selectedCategoryId = val),
-                       ),
-                     ),
-                 ],
-               ),
-               
-            const SizedBox(height: 32),
-            
+
+            SwitchListTile(
+              title: const Text('Create Debt Records'),
+              subtitle: const Text('Track as debts owed to you'),
+              value: _createDebtRecords,
+              onChanged: (val) => setState(() => _createDebtRecords = val),
+            ),
+
+            if (_includeMe && _addToExpenses && accounts.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedAccountId ?? accounts.first.id,
+                decoration: const InputDecoration(
+                  labelText: 'Pay from Account',
+                  border: OutlineInputBorder(),
+                ),
+                items: accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
+                onChanged: (val) => setState(() => _selectedAccountId = val),
+              ),
+              const SizedBox(height: 16),
+              if (expenseCategories.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  value: _selectedCategoryId,
+                  hint: const Text('Select Category'),
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: expenseCategories
+                      .map((c) => DropdownMenuItem(
+                            value: c.id,
+                            child: Row(
+                              children: [
+                                Icon(c.icon, size: 20),
+                                const SizedBox(width: 8),
+                                Text(c.name),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (val) => setState(() => _selectedCategoryId = val),
+                ),
+            ],
+
+            const SizedBox(height: 24),
+
             // Preview Card
-            Card(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                     Text('Split Amount', style: GoogleFonts.outfit(color: Colors.grey)),
-                     Text(
-                       '\$${splitAmount.toStringAsFixed(2)}',
-                       style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
-                     ),
-                     const SizedBox(height: 8),
-                     Text('per person (${divisor} people)', style: GoogleFonts.outfit(fontWeight: FontWeight.w500)),
-                  ],
+            if (splits.isNotEmpty)
+              Card(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Text('Split Preview', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Divider(),
+                      ...splits.entries.map((entry) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(entry.key, style: GoogleFonts.outfit()),
+                              Text('\$${entry.value.toStringAsFixed(2)}',
+                                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            
-            const SizedBox(height: 32),
+
+            const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _saveSplits,
+              onPressed: _saveSplit,
               icon: const Icon(Icons.save),
-              label: const Text('Save Splits'),
+              label: const Text('Create Split'),
               style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
             ),
           ],

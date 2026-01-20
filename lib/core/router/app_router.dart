@@ -25,6 +25,9 @@ import '../../features/reports/presentation/screens/report_screen.dart';
 import '../../features/debt/presentation/debt_screen.dart';
 import '../../features/debt/presentation/add_debt_screen.dart';
 import '../../features/bill_split/presentation/bill_split_screen.dart';
+import '../../features/bill_split/presentation/bill_splits_list_screen.dart';
+import '../../features/bill_split/presentation/bill_split_detail_screen.dart';
+import '../../features/bill_split/domain/bill_split.dart';
 import '../../features/categories/presentation/manage_categories_screen.dart';
 import '../../features/settings/data/settings_repository.dart'; // Import SettingsRepository
 import '../../features/onboarding/presentation/onboarding_screen.dart'; // Import OnboardingScreen
@@ -180,6 +183,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/bill-split',
         builder: (context, state) => const BillSplitScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/bill-splits',
+        builder: (context, state) => const BillSplitsListScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/bill-split-detail',
+        builder: (context, state) {
+          final billSplit = state.extra as BillSplit;
+          return BillSplitDetailScreen(billSplit: billSplit);
+        },
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

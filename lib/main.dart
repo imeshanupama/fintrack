@@ -14,6 +14,8 @@ import 'features/recurring/domain/recurring_transaction.dart';
 import 'features/recurring/domain/recurring_transaction.dart';
 import 'features/categories/domain/category.dart';
 import 'features/debt/domain/debt.dart'; // Import Debt entity
+import 'features/bill_split/domain/bill_split.dart';
+import 'features/bill_split/domain/split_participant.dart';
 import 'core/router/app_router.dart';
 import 'features/settings/presentation/settings_provider.dart'; // To listen to theme changes
 
@@ -48,6 +50,8 @@ Future<void> main() async {
     Hive.registerAdapter(RecurringTransactionAdapter());
     Hive.registerAdapter(CategoryAdapter());
     Hive.registerAdapter(DebtAdapter()); // Register Debt Adapter
+    Hive.registerAdapter(SplitParticipantAdapter());
+    Hive.registerAdapter(BillSplitAdapter());
 
     // Open Boxes
     await Hive.openBox<Account>(BoxNames.accounts);
@@ -58,6 +62,7 @@ Future<void> main() async {
     await Hive.openBox<RecurringTransaction>(BoxNames.recurringBox);
     await Hive.openBox<Category>(BoxNames.categoriesBox);
     await Hive.openBox<Debt>(BoxNames.debtsBox); // Open Debt Box
+    await Hive.openBox<BillSplit>(BoxNames.billSplitsBox);
     
     // Open Settings Box
     await Hive.openBox(BoxNames.settings); // Generic box for settings

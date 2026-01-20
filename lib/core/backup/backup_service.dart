@@ -17,6 +17,8 @@ import '../../features/budget/domain/budget.dart';
 import '../../features/recurring/domain/recurring_transaction.dart';
 import '../../features/categories/domain/category.dart';
 import '../../features/debt/domain/debt.dart';
+import '../../features/bill_split/domain/bill_split.dart';
+import '../../features/bill_split/domain/split_participant.dart';
 
 final backupServiceProvider = Provider((ref) => BackupService());
 
@@ -33,6 +35,7 @@ class BackupService {
         'recurring': _getBoxData(BoxNames.recurringBox),
         'debts': _getBoxData(BoxNames.debtsBox),
         'categories': _getBoxData(BoxNames.categoriesBox),
+        'billSplits': _getBoxData(BoxNames.billSplitsBox),
         // Settings are typically local to device, but we can backup key ones if needed. 
         // Skipping generic settings box to avoid issues with specialized types or device-specific paths.
       };
@@ -83,6 +86,7 @@ class BackupService {
       await _clearBox(BoxNames.recurringBox);
       await _clearBox(BoxNames.debtsBox);
       await _clearBox(BoxNames.categoriesBox);
+      await _clearBox(BoxNames.billSplitsBox);
 
       // 2. Populate new data
       // We need to decode dynamic maps back to HiveObjects if possible, 
@@ -112,6 +116,7 @@ class BackupService {
       await _restoreRecurring(data['recurring']);
       await _restoreDebts(data['debts']);
       await _restoreCategories(data['categories']);
+      await _restoreBillSplits(data['billSplits']);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Restore successful! Please restart app.')));
@@ -139,6 +144,7 @@ class BackupService {
       if (e is RecurringTransaction) return _recurringToJson(e);
       if (e is Debt) return _debtToJson(e);
       if (e is Category) return _categoryToJson(e);
+      if (e is BillSplit) return _billSplitToJson(e);
       return <String, dynamic>{};
     }).toList();
   }
@@ -170,6 +176,11 @@ class BackupService {
   };
   Map<String, dynamic> _categoryToJson(Category c) => {
     'id': c.id, 'name': c.name, 'iconCode': c.iconCode, 'colorValue': c.colorValue, 'type': c.type, 'isDefault': c.isDefault
+  };
+  Map<String, dynamic> _billSplitToJson(BillSplit b) => {
+    'id': b.id, 'title': b.title, 'totalAmount': b.totalAmount, 'currencyCode': b.currencyCode, 'date': b.date.toIso8601String(),
+    'participants': b.participants.map((p) => {'name': p.name, 'amount': p.amount, 'isPaid': p.isPaid, 'paidDate': p.paidDate?.toIso8601String()}).toList(),
+    'myShare': b.myShare, 'transactionId': b.transactionId, 'receiptPath': b.receiptPath, 'note': b.note, 'createdAt': b.createdAt.toIso8601String()
   };
 
   // --- Restorers (FromJson) ---
@@ -245,6 +256,25 @@ class BackupService {
            id: m['id'], name: m['name'], iconCode: m['iconCode'], colorValue: m['colorValue'], type: m['type'], isDefault: m['isDefault']
          );
          await box.put(c.id, c);
+      }
+  }
+  Future<void> _restoreBillSplits(List<dynamic>? list) async {
+      if (list == null) return;
+      final box = Hive.box<BillSplit>(BoxNames.billSplitsBox);
+      for (var m in list) {
+         final participants = (m['participants'] as List<dynamic>).map((p) => SplitParticipant(
+           name: p['name'],
+           amount: p['amount'],
+           isPaid: p['isPaid'],
+           paidDate: p['paidDate'] != null ? DateTime.parse(p['paidDate']) : null,
+         )).toList();
+         final b = BillSplit(
+           id: m['id'], title: m['title'], totalAmount: m['totalAmount'], currencyCode: m['currencyCode'],
+           date: DateTime.parse(m['date']), participants: participants, myShare: m['myShare'],
+           transactionId: m['transactionId'], receiptPath: m['receiptPath'], note: m['note'],
+           createdAt: DateTime.parse(m['createdAt'])
+         );
+         await box.put(b.id, b);
       }
   }
 }
