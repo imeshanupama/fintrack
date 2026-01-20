@@ -17,6 +17,7 @@ import 'features/debt/domain/debt.dart'; // Import Debt entity
 import 'features/bill_split/domain/bill_split.dart';
 import 'features/bill_split/domain/split_participant.dart';
 import 'features/insights/domain/insight.dart';
+import 'features/currency/domain/exchange_rate.dart';
 import 'core/router/app_router.dart';
 import 'features/settings/presentation/settings_provider.dart'; // To listen to theme changes
 
@@ -54,6 +55,7 @@ Future<void> main() async {
     Hive.registerAdapter(SplitParticipantAdapter());
     Hive.registerAdapter(BillSplitAdapter());
     Hive.registerAdapter(InsightAdapter());
+    Hive.registerAdapter(ExchangeRateAdapter());
 
     // Open Boxes
     await Hive.openBox<Account>(BoxNames.accounts);
@@ -66,6 +68,7 @@ Future<void> main() async {
     await Hive.openBox<Debt>(BoxNames.debtsBox); // Open Debt Box
     await Hive.openBox<BillSplit>(BoxNames.billSplitsBox);
     await Hive.openBox<Insight>(BoxNames.insightsBox);
+    await Hive.openBox<ExchangeRate>(BoxNames.exchangeRatesBox);
     
     // Open Settings Box
     await Hive.openBox(BoxNames.settings); // Generic box for settings

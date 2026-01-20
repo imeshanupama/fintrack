@@ -61,6 +61,7 @@ dependencies:
   printing: ^5.14.2
   flutter_colorpicker: ^1.1.0
   file_picker: ^10.3.8
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
