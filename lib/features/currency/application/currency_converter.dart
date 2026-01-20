@@ -23,6 +23,15 @@ class CurrencyConverter {
       return rates[directKey]!.convert(amount);
     }
 
+    // Try inverse rate (e.g., if we have LKR_USD but need USD_LKR)
+    final inverseKey = '${to}_$from';
+    if (rates.containsKey(inverseKey)) {
+      final inverseRate = rates[inverseKey]!.rate;
+      if (inverseRate != 0) {
+        return amount / inverseRate; // Inverse conversion
+      }
+    }
+
     // Cross conversion via USD
     final fromToUsd = '${from}_USD';
     final usdToTarget = 'USD_$to';

@@ -7,6 +7,8 @@ import '../../../accounts/domain/account.dart';
 import '../../../accounts/presentation/accounts_provider.dart';
 import '../../../settings/presentation/settings_provider.dart';
 import 'package:intl/intl.dart';
+import '../../../currency/presentation/currency_provider.dart';
+import '../../../currency/domain/currency_constants.dart';
 
 class AccountCard extends ConsumerWidget {
   final Account account;
@@ -15,7 +17,17 @@ class AccountCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currency = ref.watch(settingsProvider).currency;
+    final baseCurrency = ref.watch(baseCurrencyProvider);
+    final converter = ref.watch(currencyConverterProvider);
+    
+    // Calculate converted amount if different currency
+    final showConversion = account.currencyCode != baseCurrency && converter != null;
+    final convertedAmount = showConversion
+        ? converter.convertAccount(account, baseCurrency)
+        : account.balance;
+    final exchangeRate = showConversion
+        ? converter.getRate(account.currencyCode, baseCurrency)
+        : null;
     return Container(
       width: 320,
       margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
@@ -121,13 +133,44 @@ class AccountCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _formatCurrency(account.balance, currency),
+                      _formatCurrency(account.balance, account.currencyCode),
                       style: GoogleFonts.outfit(
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (showConversion) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            _formatCurrency(convertedAmount, baseCurrency),
+                            style: GoogleFonts.outfit(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 16,
+                            ),
+                          ),
+                          if (exchangeRate != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '@ ${exchangeRate.toStringAsFixed(4)}',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ],

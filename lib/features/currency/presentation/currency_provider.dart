@@ -4,17 +4,40 @@ import '../domain/exchange_rate.dart';
 import '../data/exchange_rate_repository.dart';
 import '../application/exchange_rate_service.dart';
 import '../application/currency_converter.dart';
+import '../../settings/data/settings_repository.dart';
 
 // Services
 final exchangeRateServiceProvider = Provider((ref) => ExchangeRateService());
 
-// Base currency notifier
+// Base currency notifier with persistent storage
 class BaseCurrencyNotifier extends Notifier<String> {
   @override
-  String build() => 'USD';
+  String build() {
+    // Load saved currency from settings, default to USD
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    return settingsRepo.getCurrency();
+  }
 
-  void setCurrency(String currency) {
+  void setCurrency(String currency) async {
+    // Save to settings for persistence
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    await settingsRepo.setCurrency(currency);
+    
+    // Update state
     state = currency;
+    
+    // Automatically fetch rates for new currency
+    try {
+      final service = ref.read(exchangeRateServiceProvider);
+      final repository = ref.read(exchangeRateRepositoryProvider);
+      final rates = await service.fetchRates(currency);
+      await repository.saveRates(rates);
+      
+      // Invalidate to trigger UI refresh
+      ref.invalidate(exchangeRatesProvider);
+    } catch (e) {
+      // Silently fail, will use cached rates
+    }
   }
 }
 

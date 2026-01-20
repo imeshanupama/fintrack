@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../accounts/presentation/accounts_provider.dart';
 import '../../transactions/presentation/transactions_provider.dart';
 import 'widgets/account_card.dart';
+import 'widgets/insights_widget.dart';
 import 'widgets/transaction_list_tile.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -11,6 +12,8 @@ import '../../recurring/application/recurring_transaction_service.dart';
 import '../../auth/data/auth_repository.dart'; 
 import '../../auth/presentation/auth_provider.dart';
 import '../../savings/presentation/savings_provider.dart'; // Import SavingsProvider
+import '../../currency/presentation/currency_provider.dart';
+import '../../currency/domain/currency_constants.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -26,6 +29,15 @@ class HomeScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final user = authState.asData?.value;
     final displayName = user?.displayName ?? user?.email?.split('@')[0] ?? 'User';
+    
+    // Currency
+    final baseCurrency = ref.watch(baseCurrencyProvider);
+    final converter = ref.watch(currencyConverterProvider);
+    
+    // Calculate total net worth in base currency
+    final totalNetWorth = converter != null
+        ? converter.getTotalInCurrency(accounts, baseCurrency)
+        : accounts.fold(0.0, (sum, acc) => sum + acc.balance);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -38,33 +50,53 @@ class HomeScreen extends ConsumerWidget {
             ),
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Welcome Back,',
+                  'Welcome, $displayName',
                   style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                Text(
-                  displayName,
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${getCurrencySymbol(baseCurrency)}${totalNetWorth.toStringAsFixed(0)}',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
             actions: [
-               IconButton(
-                icon: const Icon(Icons.call_split), // Split Icon
-                tooltip: 'Split Bill',
-                onPressed: () => context.push('/bill-split'),
-              ),
-               IconButton(
-                icon: const Icon(Icons.handshake_outlined), // Debt Icon
-                tooltip: 'Debts',
-                onPressed: () => context.push('/debt'),
+              // Currency Selector
+              PopupMenuButton<String>(
+                icon: Text(
+                  getCurrencyFlag(baseCurrency),
+                  style: const TextStyle(fontSize: 24),
+                ),
+                tooltip: 'Change Currency',
+                onSelected: (currency) {
+                  ref.read(baseCurrencyProvider.notifier).setCurrency(currency);
+                },
+                itemBuilder: (context) => [
+                  'USD', 'EUR', 'GBP', 'JPY', 'INR', 'LKR'
+                ].map((code) => PopupMenuItem(
+                  value: code,
+                  child: Row(
+                    children: [
+                      Text(getCurrencyFlag(code), style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 8),
+                      Text(code, style: GoogleFonts.outfit()),
+                      const SizedBox(width: 8),
+                      Text(getCurrencyName(code), style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                )).toList(),
               ),
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
@@ -154,6 +186,10 @@ class HomeScreen extends ConsumerWidget {
                           },
                         ),
                 ),
+                
+                // Insights Widget
+                const InsightsWidget(),
+                
                 const SizedBox(height: 32),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
