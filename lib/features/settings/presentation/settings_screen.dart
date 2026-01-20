@@ -102,6 +102,15 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const Divider(),
             ListTile(
+              leading: const Icon(Icons.currency_exchange),
+              title: Text('Currency Settings', style: GoogleFonts.outfit()),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                context.push('/currency-settings');
+              },
+            ),
+            const Divider(),
+            ListTile(
               leading: const Icon(Icons.palette_outlined),
               title: Text('Theme', style: GoogleFonts.outfit()),
               subtitle: Text(settings.themeMode.name.toUpperCase(), style: GoogleFonts.outfit(color: Colors.grey)),

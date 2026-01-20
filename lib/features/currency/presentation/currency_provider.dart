@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod/riverpod.dart';
 import '../domain/exchange_rate.dart';
 import '../data/exchange_rate_repository.dart';
 import '../application/exchange_rate_service.dart';
@@ -7,8 +8,17 @@ import '../application/currency_converter.dart';
 // Services
 final exchangeRateServiceProvider = Provider((ref) => ExchangeRateService());
 
-// Base currency selection (stored in settings)
-final baseCurrencyProvider = Provider<String>((ref) => 'USD');
+// Base currency notifier
+class BaseCurrencyNotifier extends Notifier<String> {
+  @override
+  String build() => 'USD';
+
+  void setCurrency(String currency) {
+    state = currency;
+  }
+}
+
+final baseCurrencyProvider = NotifierProvider<BaseCurrencyNotifier, String>(BaseCurrencyNotifier.new);
 
 // Exchange rates provider
 final exchangeRatesProvider = FutureProvider<Map<String, ExchangeRate>>((ref) async {
@@ -76,9 +86,12 @@ class CurrencyNotifier extends Notifier<AsyncValue<void>> {
     }
   }
 
-  // Set base currency (for now, just trigger update)
+  // Set base currency
   Future<void> setBaseCurrency(String currency) async {
-    // TODO: Store in settings
+    // Update the base currency
+    ref.read(baseCurrencyProvider.notifier).setCurrency(currency);
+    
+    // Fetch rates for new base currency
     await updateRates();
   }
 
