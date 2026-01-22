@@ -6,6 +6,7 @@ import '../../transactions/presentation/transactions_provider.dart';
 import 'widgets/account_card.dart';
 import 'widgets/insights_widget.dart';
 import 'widgets/transaction_list_tile.dart';
+import 'widgets/feature_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../recurring/application/recurring_transaction_service.dart';
@@ -186,6 +187,78 @@ class HomeScreen extends ConsumerWidget {
                           },
                         ),
                 ),
+                
+                const SizedBox(height: 32),
+                
+                // Quick Actions Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Quick Actions',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 1.1,
+                    children: [
+                      FeatureCard(
+                        icon: Icons.receipt_long,
+                        title: 'Bill Split',
+                        subtitle: 'Split bills with friends',
+                        gradientColors: [Colors.purple.shade400, Colors.purple.shade600],
+                        onTap: () => context.push('/bill-split'),
+                      ).animate().fadeIn(duration: 500.ms, delay: 100.ms).scale(begin: const Offset(0.8, 0.8)),
+                      FeatureCard(
+                        icon: Icons.savings,
+                        title: 'Savings',
+                        subtitle: 'Track your goals',
+                        gradientColors: [Colors.green.shade400, Colors.green.shade600],
+                        onTap: () => context.push('/savings'),
+                      ).animate().fadeIn(duration: 500.ms, delay: 150.ms).scale(begin: const Offset(0.8, 0.8)),
+                      FeatureCard(
+                        icon: Icons.account_balance_wallet,
+                        title: 'Budgets',
+                        subtitle: 'Manage spending',
+                        gradientColors: [Colors.orange.shade400, Colors.orange.shade600],
+                        onTap: () => context.push('/budgets'),
+                      ).animate().fadeIn(duration: 500.ms, delay: 200.ms).scale(begin: const Offset(0.8, 0.8)),
+                      FeatureCard(
+                        icon: Icons.people,
+                        title: 'Debts/IOUs',
+                        subtitle: 'Track money owed',
+                        gradientColors: [Colors.red.shade400, Colors.red.shade600],
+                        onTap: () => context.push('/debts'),
+                      ).animate().fadeIn(duration: 500.ms, delay: 250.ms).scale(begin: const Offset(0.8, 0.8)),
+                      FeatureCard(
+                        icon: Icons.repeat,
+                        title: 'Recurring',
+                        subtitle: 'Auto transactions',
+                        gradientColors: [Colors.blue.shade400, Colors.blue.shade600],
+                        onTap: () => context.push('/recurring'),
+                      ).animate().fadeIn(duration: 500.ms, delay: 300.ms).scale(begin: const Offset(0.8, 0.8)),
+                      FeatureCard(
+                        icon: Icons.analytics,
+                        title: 'Reports',
+                        subtitle: 'View insights',
+                        gradientColors: [Colors.teal.shade400, Colors.teal.shade600],
+                        onTap: () => context.push('/reports'),
+                      ).animate().fadeIn(duration: 500.ms, delay: 350.ms).scale(begin: const Offset(0.8, 0.8)),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
                 
                 // Insights Widget
                 const InsightsWidget(),

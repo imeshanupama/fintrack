@@ -69,13 +69,16 @@ Future<void> main() async {
     await Hive.openBox<BillSplit>(BoxNames.billSplitsBox);
     await Hive.openBox<Insight>(BoxNames.insightsBox);
     await Hive.openBox<ExchangeRate>(BoxNames.exchangeRatesBox);
+    await Hive.openBox(BoxNames.notificationsBox); // Notifications box
     
     // Open Settings Box
     await Hive.openBox(BoxNames.settings); // Generic box for settings
 
     // Initialize Notifications
     try {
-      await NotificationService().init();
+      final notificationService = NotificationService();
+      await notificationService.init();
+      await notificationService.requestPermissions();
     } catch (e) {
       debugPrint("Notification initialization failed: $e");
     }

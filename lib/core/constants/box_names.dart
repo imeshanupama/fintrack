@@ -10,4 +10,5 @@ class BoxNames {
   static const String billSplitsBox = 'billSplitsBox';
   static const String insightsBox = 'insightsBox';
   static const String exchangeRatesBox = 'exchangeRatesBox';
+  static const String notificationsBox = 'notificationsBox';
 }
