@@ -19,24 +19,39 @@ class FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Adjust gradient opacity for dark mode
+    final adjustedGradientColors = isDark
+        ? gradientColors.map((c) => c.withOpacity(0.6)).toList()
+        : gradientColors;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: gradientColors,
+            colors: adjustedGradientColors,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: gradientColors.first.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: isDark
+              ? null // No shadow in dark mode
+              : [
+                  BoxShadow(
+                    color: gradientColors.first.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+          border: isDark
+              ? Border.all(
+                  color: gradientColors.first.withOpacity(0.3),
+                  width: 1,
+                )
+              : null,
         ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -47,7 +62,7 @@ class FeatureCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withOpacity(isDark ? 0.15 : 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

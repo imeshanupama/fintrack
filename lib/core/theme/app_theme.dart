@@ -9,9 +9,11 @@ class AppTheme {
   static const Color successColor = Color(0xFF4CAF50);
   
   // Custom Dark Palette
-  static const Color darkBackground = Color(0xFF121212);
-  static const Color darkSurface = Color(0xFF1E1E1E);
-  static const Color darkOnSurface = Color(0xFFE0E0E0);
+  static const Color darkBackground = Color(0xFF0A0A0A); // Deeper black
+  static const Color darkSurface = Color(0xFF1A1A1A); // Slightly lighter
+  static const Color darkSurfaceVariant = Color(0xFF242424); // For elevated cards
+  static const Color darkOnSurface = Color(0xFFE8E8E8); // Better contrast
+  static const Color darkOnSurfaceVariant = Color(0xFFB0B0B0); // Secondary text
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -31,14 +33,12 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
-      /*
       cardTheme: CardTheme(
         color: Colors.white,
         elevation: 2,
         shadowColor: Colors.black12,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      */
     );
   }
 
@@ -54,20 +54,38 @@ class AppTheme {
         brightness: Brightness.dark,
         secondary: secondaryColor,
         surface: darkSurface,
+        surfaceContainerHighest: darkSurfaceVariant,
+        onSurface: darkOnSurface,
+        onSurfaceVariant: darkOnSurfaceVariant,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: darkBackground,
-        foregroundColor: Colors.white,
+        foregroundColor: darkOnSurface,
         elevation: 0,
         centerTitle: false,
       ),
-      /*
       cardTheme: CardTheme(
         color: darkSurface,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shadowColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: darkSurfaceVariant,
+            width: 1,
+          ),
+        ),
       ),
-      */
+      dividerColor: darkSurfaceVariant,
+      // Improve text contrast
+      textTheme: TextTheme(
+        bodyLarge: TextStyle(color: darkOnSurface),
+        bodyMedium: TextStyle(color: darkOnSurface),
+        bodySmall: TextStyle(color: darkOnSurfaceVariant),
+        titleLarge: TextStyle(color: darkOnSurface),
+        titleMedium: TextStyle(color: darkOnSurface),
+        titleSmall: TextStyle(color: darkOnSurface),
+      ),
     );
   }
 }

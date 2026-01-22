@@ -7,6 +7,7 @@ import 'widgets/account_card.dart';
 import 'widgets/insights_widget.dart';
 import 'widgets/transaction_list_tile.dart';
 import 'widgets/feature_card.dart';
+import '../../../core/widgets/empty_state_widget.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../recurring/application/recurring_transaction_service.dart';
@@ -238,7 +239,7 @@ class HomeScreen extends ConsumerWidget {
                         title: 'Debts/IOUs',
                         subtitle: 'Track money owed',
                         gradientColors: [Colors.red.shade400, Colors.red.shade600],
-                        onTap: () => context.push('/debts'),
+                        onTap: () => context.push('/debt'),
                       ).animate().fadeIn(duration: 500.ms, delay: 250.ms).scale(begin: const Offset(0.8, 0.8)),
                       FeatureCard(
                         icon: Icons.repeat,
@@ -291,14 +292,20 @@ class HomeScreen extends ConsumerWidget {
           ),
           if (transactions.isEmpty)
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(40.0),
-                child: Center(
-                  child: Text(
-                    'No transactions yet.',
-                    style: GoogleFonts.outfit(color: Colors.grey),
-                  ),
-                ),
+              child: EmptyStateWidget(
+                icon: Icons.receipt_long_outlined,
+                title: 'No Transactions Yet',
+                description: 'Start tracking your finances by adding your first transaction.',
+                actionLabel: 'Add Transaction',
+                onActionPressed: () {
+                  if (accounts.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please add an account first')),
+                    );
+                    return;
+                  }
+                  context.push('/add-transaction');
+                },
               ),
             )
           else
