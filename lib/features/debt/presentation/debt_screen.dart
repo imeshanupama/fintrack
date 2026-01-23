@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/empty_state_widget.dart';
 import '../domain/debt.dart';
 import 'debt_provider.dart';
 
@@ -87,18 +88,13 @@ class DebtScreen extends ConsumerWidget {
           // List
           Expanded(
             child: debtState.filteredDebts.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.money_off, size: 64, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No debts found',
-                          style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey),
-                        ),
-                      ],
-                    ),
+                ? EmptyStateWidget(
+                    icon: Icons.people_outline,
+                    title: 'No Debts Found',
+                    description: 'Track money you owe or money owed to you. Keep your finances organized.',
+                    actionLabel: 'Add Record',
+                    onActionPressed: () => context.push('/add-debt'),
+                    color: Colors.red.shade600,
                   )
                 : ListView.builder(
                     itemCount: debtState.filteredDebts.length,

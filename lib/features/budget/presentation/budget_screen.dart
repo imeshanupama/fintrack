@@ -8,6 +8,7 @@ import '../../transactions/presentation/transactions_provider.dart';
 import '../presentation/budget_provider.dart';
 import '../../transactions/domain/transaction_type.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../../../core/widgets/empty_state_widget.dart';
 
 class BudgetScreen extends ConsumerWidget {
   const BudgetScreen({super.key});
@@ -29,23 +30,13 @@ class BudgetScreen extends ConsumerWidget {
         title: const Text('Budgets'),
       ),
       body: budgets.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.account_balance_wallet_outlined, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No budgets set',
-                    style: GoogleFonts.outfit(fontSize: 18, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  FilledButton.tonal(
-                    onPressed: () => context.push('/add-budget'),
-                    child: const Text('Create Budget'),
-                  ),
-                ],
-              ),
+          ? EmptyStateWidget(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'No Budgets Set',
+              description: 'Create budgets to track your spending and stay on top of your finances.',
+              actionLabel: 'Create Budget',
+              onActionPressed: () => context.push('/add-budget'),
+              color: Colors.orange.shade600,
             )
           : ListView.builder(
               padding: const EdgeInsets.all(20),

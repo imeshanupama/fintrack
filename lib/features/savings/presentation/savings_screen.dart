@@ -10,6 +10,7 @@ import '../../transactions/domain/transaction.dart';
 import '../../transactions/domain/transaction_type.dart';
 import 'savings_provider.dart';
 import 'widgets/savings_goal_card.dart';
+import '../../../core/widgets/empty_state_widget.dart';
 
 class SavingsScreen extends ConsumerWidget {
   const SavingsScreen({super.key});
@@ -102,7 +103,7 @@ class SavingsScreen extends ConsumerWidget {
                   }
                 }
               },
-               child: const Text('Add'),
+              child: const Text('Add'),
             ),
           ],
         ),
@@ -120,18 +121,13 @@ class SavingsScreen extends ConsumerWidget {
         title: const Text('Savings Goals'),
       ),
       body: goals.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.savings_outlined, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No savings goals yet',
-                    style: GoogleFonts.outfit(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
+          ? EmptyStateWidget(
+              icon: Icons.savings_outlined,
+              title: 'No Savings Goals',
+              description: 'Start building your future by creating your first savings goal.',
+              actionLabel: 'Create Goal',
+              onActionPressed: () => context.push('/add-savings-goal'),
+              color: Colors.green.shade600,
             )
           : ListView.builder(
               padding: const EdgeInsets.all(20),

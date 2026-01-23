@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../core/widgets/empty_state_widget.dart';
 import '../domain/bill_split.dart';
 import 'bill_split_provider.dart';
 
@@ -99,15 +100,13 @@ class _BillSplitsListScreenState extends ConsumerState<BillSplitsListScreen> wit
 
   Widget _buildSplitsList(List<BillSplit> splits) {
     if (splits.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text('No bill splits found', style: GoogleFonts.outfit(color: Colors.grey, fontSize: 16)),
-          ],
-        ),
+      return EmptyStateWidget(
+        icon: Icons.receipt_long_outlined,
+        title: 'No Bill Splits',
+        description: 'Split bills with friends and keep track of who owes what.',
+        actionLabel: 'Create Split',
+        onActionPressed: () => context.push('/bill-split'),
+        color: Colors.purple.shade600,
       );
     }
 
