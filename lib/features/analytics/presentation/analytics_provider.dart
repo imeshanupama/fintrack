@@ -28,6 +28,14 @@ class AnalyticsState {
   final Map<String, double> incomeYearlyCategory;
   final Map<int, double> incomeYearlyChart;
 
+  // Previous period data for comparisons
+  final Map<int, double> previousWeeklyChartData;
+  final Map<int, double> previousMonthlyChartData;
+  final Map<int, double> previousYearlyChartData;
+  final Map<int, double> previousIncomeWeeklyChart;
+  final Map<int, double> previousIncomeMonthlyChart;
+  final Map<int, double> previousIncomeYearlyChart;
+
   AnalyticsState({
     required this.weeklyCategorySpending,
     required this.weeklyChartData,
@@ -41,6 +49,12 @@ class AnalyticsState {
     required this.incomeMonthlyChart,
     required this.incomeYearlyCategory,
     required this.incomeYearlyChart,
+    required this.previousWeeklyChartData,
+    required this.previousMonthlyChartData,
+    required this.previousYearlyChartData,
+    required this.previousIncomeWeeklyChart,
+    required this.previousIncomeMonthlyChart,
+    required this.previousIncomeYearlyChart,
   });
 }
 
@@ -56,14 +70,31 @@ final analyticsProvider = Provider<AnalyticsState>((ref) {
     return diff >= 0 && diff < 7;
   }).toList();
 
+  // Previous Week: 7-14 days ago
+  final previousWeeklyTxs = transactions.where((t) {
+    final diff = now.difference(t.date).inDays;
+    return diff >= 7 && diff < 14;
+  }).toList();
+
   // Monthly: Current Month
   final monthlyTxs = transactions.where((t) {
     return t.date.year == now.year && t.date.month == now.month;
   }).toList();
 
+  // Previous Month
+  final previousMonth = DateTime(now.year, now.month - 1);
+  final previousMonthlyTxs = transactions.where((t) {
+    return t.date.year == previousMonth.year && t.date.month == previousMonth.month;
+  }).toList();
+
   // Yearly: Current Year
   final yearlyTxs = transactions.where((t) {
     return t.date.year == now.year;
+  }).toList();
+
+  // Previous Year
+  final previousYearlyTxs = transactions.where((t) {
+    return t.date.year == now.year - 1;
   }).toList();
 
   // --- SPLIT INCOME/EXPENSE ---
@@ -94,11 +125,37 @@ final analyticsProvider = Provider<AnalyticsState>((ref) {
     return map;
   }
 
+  // Previous week chart (7-14 days ago, mapped to 0-6)
+  Map<int, double> calculatePreviousWeeklyChart(List<Transaction> txs) {
+    final map = <int, double>{};
+    for (int i = 0; i < 7; i++) map[i] = 0;
+    for (var t in txs) {
+      final diff = now.difference(t.date).inDays;
+      if (diff >= 7 && diff < 14) {
+        final index = diff - 7; // Map to 0-6
+        map.update(index, (val) => val + t.amount, ifAbsent: () => t.amount);
+      }
+    }
+    return map;
+  }
+
   // 1-31 (Day of Month)
   Map<int, double> calculateMonthlyChart(List<Transaction> txs) {
     final map = <int, double>{};
     final daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
     for (int i = 1; i <= daysInMonth; i++) map[i] = 0;
+    
+    for (var t in txs) {
+      map.update(t.date.day, (val) => val + t.amount, ifAbsent: () => t.amount);
+    }
+    return map;
+  }
+
+  // Previous month chart
+  Map<int, double> calculatePreviousMonthlyChart(List<Transaction> txs) {
+    final map = <int, double>{};
+    final daysInPrevMonth = DateUtils.getDaysInMonth(previousMonth.year, previousMonth.month);
+    for (int i = 1; i <= daysInPrevMonth; i++) map[i] = 0;
     
     for (var t in txs) {
       map.update(t.date.day, (val) => val + t.amount, ifAbsent: () => t.amount);
@@ -131,5 +188,13 @@ final analyticsProvider = Provider<AnalyticsState>((ref) {
     incomeMonthlyChart: calculateMonthlyChart(getIncome(monthlyTxs)),
     incomeYearlyCategory: calculateCategories(getIncome(yearlyTxs)),
     incomeYearlyChart: calculateYearlyChart(getIncome(yearlyTxs)),
+
+    // Previous period data
+    previousWeeklyChartData: calculatePreviousWeeklyChart(getExpenses(previousWeeklyTxs)),
+    previousMonthlyChartData: calculatePreviousMonthlyChart(getExpenses(previousMonthlyTxs)),
+    previousYearlyChartData: calculateYearlyChart(getExpenses(previousYearlyTxs)),
+    previousIncomeWeeklyChart: calculatePreviousWeeklyChart(getIncome(previousWeeklyTxs)),
+    previousIncomeMonthlyChart: calculatePreviousMonthlyChart(getIncome(previousMonthlyTxs)),
+    previousIncomeYearlyChart: calculateYearlyChart(getIncome(previousYearlyTxs)),
   );
 });
