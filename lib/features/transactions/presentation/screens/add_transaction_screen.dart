@@ -14,6 +14,9 @@ import '../transactions_provider.dart';
 import '../../../recurring/domain/recurring_transaction.dart';
 import '../../../recurring/data/recurring_transaction_repository.dart';
 import '../../../categories/presentation/category_provider.dart';
+import '../../application/auto_categorization_service.dart';
+import '../../domain/category_suggestion.dart';
+import '../widgets/category_suggestion_chip.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   final Transaction? transaction;
@@ -32,6 +35,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _isRecurring = false;
   String _recurringInterval = 'Monthly';
+  CategorySuggestion? _categorySuggestion;
+  bool _suggestionDismissed = false;
 
   @override
   void initState() {
@@ -50,6 +55,52 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _selectedDate = widget.transaction!.date;
     } else if (accounts.isNotEmpty) {
       _accountId = accounts.first.id;
+    }
+    
+    // Listen to note changes for auto-categorization
+    _noteController.addListener(_onNoteChanged);
+  }
+
+  @override
+  void dispose() {
+    _noteController.removeListener(_onNoteChanged);
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _onNoteChanged() {
+    // Debounce and get category suggestion
+    if (_noteController.text.trim().isEmpty || _suggestionDismissed) {
+      setState(() {
+        _categorySuggestion = null;
+      });
+      return;
+    }
+
+    // Get suggestion asynchronously
+    _getSuggestion();
+  }
+
+  Future<void> _getSuggestion() async {
+    final note = _noteController.text;
+    if (note.trim().isEmpty) return;
+
+    final service = ref.read(autoCategorizationServiceProvider);
+    final categories = ref.read(categoryProvider);
+    final transactions = ref.read(transactionsProvider);
+    final amount = double.tryParse(_amount) ?? 0;
+
+    final suggestion = await service.suggestCategory(
+      note: note,
+      amount: amount,
+      availableCategories: categories.where((c) => c.type == _type.name).toList(),
+      historicalTransactions: transactions,
+    );
+
+    if (suggestion != null && suggestion.isConfident && mounted) {
+      setState(() {
+        _categorySuggestion = suggestion;
+      });
     }
   }
 
@@ -196,9 +247,54 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                            validator: (val) => val == null ? 'Select Account' : null,
                          ),
                        ),
-                    const SizedBox(height: 16),
-                    // Category Selector (Simple horizontal list)
-                    SizedBox(
+                     const SizedBox(height: 16),
+                     // Smart Category Suggestion
+                     if (_categorySuggestion != null && !_suggestionDismissed)
+                       Builder(
+                         builder: (context) {
+                           final allCategories = ref.watch(categoryProvider);
+                           final suggestedCategory = allCategories.firstWhere(
+                             (c) => c.id == _categorySuggestion!.categoryId,
+                             orElse: () => allCategories.first,
+                           );
+                           
+                           return CategorySuggestionChip(
+                             suggestion: _categorySuggestion!,
+                             category: suggestedCategory,
+                             onAccept: () {
+                               HapticFeedback.mediumImpact();
+                               setState(() {
+                                 _categoryId = _categorySuggestion!.categoryId;
+                                 _categorySuggestion = null;
+                               });
+                               
+                               // Learn from acceptance
+                               ref.read(autoCategorizationServiceProvider).learnFromSelection(
+                                 note: _noteController.text,
+                                 selectedCategoryId: _categoryId!,
+                                 suggestedCategoryId: _categorySuggestion?.categoryId,
+                               );
+                               
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                 SnackBar(
+                                   content: Text('Category applied: ${suggestedCategory.name}'),
+                                   duration: const Duration(seconds: 2),
+                                   behavior: SnackBarBehavior.floating,
+                                 ),
+                               );
+                             },
+                             onDismiss: () {
+                               setState(() {
+                                 _suggestionDismissed = true;
+                                 _categorySuggestion = null;
+                               });
+                             },
+                           );
+                         },
+                       ),
+                     const SizedBox(height: 16),
+                     // Category Selector (Simple horizontal list)
+                     SizedBox(
                       height: 50,
                       child: categories.isEmpty 
                         ? Center(child: Text('No categories found', style: GoogleFonts.outfit()))
@@ -210,8 +306,23 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                           final cat = categories[index];
                           final isSelected = _categoryId == cat.id; 
                           return GestureDetector(
-                            onTap: () => setState(() => _categoryId = cat.id),
-                            child: Container(
+                             onTap: () {
+                               HapticFeedback.lightImpact();
+                               setState(() {
+                                 _categoryId = cat.id;
+                                 _suggestionDismissed = false; // Reset for next time
+                               });
+                               
+                               // Learn from manual selection if we had a suggestion
+                               if (_categorySuggestion != null) {
+                                 ref.read(autoCategorizationServiceProvider).learnFromSelection(
+                                   note: _noteController.text,
+                                   selectedCategoryId: cat.id,
+                                   suggestedCategoryId: _categorySuggestion?.categoryId,
+                                 );
+                               }
+                             },
+                             child: Container(
                               margin: const EdgeInsets.only(right: 8),
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                               decoration: BoxDecoration(

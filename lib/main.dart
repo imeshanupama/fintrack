@@ -18,6 +18,8 @@ import 'features/bill_split/domain/bill_split.dart';
 import 'features/bill_split/domain/split_participant.dart';
 import 'features/insights/domain/insight.dart';
 import 'features/currency/domain/exchange_rate.dart';
+import 'features/transactions/domain/categorization_rule.dart';
+import 'features/transactions/data/categorization_repository.dart';
 import 'core/router/app_router.dart';
 import 'features/settings/presentation/settings_provider.dart'; // To listen to theme changes
 
@@ -56,6 +58,7 @@ Future<void> main() async {
     Hive.registerAdapter(BillSplitAdapter());
     Hive.registerAdapter(InsightAdapter());
     Hive.registerAdapter(ExchangeRateAdapter());
+    Hive.registerAdapter(CategorizationRuleAdapter());
 
     // Open Boxes
     await Hive.openBox<Account>(BoxNames.accounts);
@@ -81,6 +84,14 @@ Future<void> main() async {
       await notificationService.requestPermissions();
     } catch (e) {
       debugPrint("Notification initialization failed: $e");
+    }
+
+    // Initialize Auto-Categorization Repository
+    try {
+      final categorizationRepo = CategorizationRepository();
+      await categorizationRepo.init();
+    } catch (e) {
+      debugPrint("Auto-categorization initialization failed: $e");
     }
 
     runApp(const ProviderScope(child: SyncManager(child: MyApp())));
