@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'categorization_rule.g.dart';
 
-@HiveType(typeId: 10)
+@HiveType(typeId: 13)
 class CategorizationRule extends HiveObject {
   @HiveField(0)
   final String id;

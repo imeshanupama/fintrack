@@ -8,7 +8,7 @@ part of 'categorization_rule.dart';
 
 class CategorizationRuleAdapter extends TypeAdapter<CategorizationRule> {
   @override
-  final int typeId = 10;
+  final int typeId = 13;
 
   @override
   CategorizationRule read(BinaryReader reader) {
